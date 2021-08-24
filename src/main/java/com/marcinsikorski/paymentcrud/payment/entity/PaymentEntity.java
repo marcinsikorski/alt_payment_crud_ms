@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.type.CurrencyType;
+import org.hibernate.validator.constraints.Length;
 
 import javax.persistence.*;
 import javax.validation.constraints.Min;
@@ -23,7 +24,6 @@ public class PaymentEntity {
     @Column(nullable = false)
     @GeneratedValue(strategy = GenerationType.AUTO)
     private Long paymentId;
-    @Min(2)
     @Column(nullable = false)
     private BigDecimal amount;
     @Column(nullable = false)
@@ -31,7 +31,6 @@ public class PaymentEntity {
     @Column(nullable = false)
     private Currency currency;
     //length based on ISO 13616 for different countries
-    @Column(nullable = false)
-    @Size(min = 15, max = 32)
+    @Column(nullable = false, length = 32)
     private String targetBankAccount;
 }
