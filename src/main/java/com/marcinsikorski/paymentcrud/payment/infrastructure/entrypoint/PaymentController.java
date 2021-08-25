@@ -5,10 +5,12 @@ import com.marcinsikorski.paymentcrud.payment.infrastructure.PaymentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
 import java.util.ArrayList;
+import java.util.Currency;
 import java.util.List;
 
 @RestController
@@ -17,6 +19,13 @@ import java.util.List;
 public class PaymentController {
 
     private final PaymentService paymentService;
+
+    @GetMapping("")
+    public ResponseEntity<List<PaymentDTO>> getPaymentById(@RequestParam(name = "userId", required = false) Long userId,
+                                                           @RequestParam(name = "currency", required = false) Currency currency) {
+        List<PaymentDTO> paymentDTOList = paymentService.findByFilter(userId, currency);
+        return ResponseEntity.status(HttpStatus.OK).body(paymentDTOList);
+    }
 
     @GetMapping("/{paymentId}")
     public ResponseEntity<PaymentDTO> getPaymentById(@PathVariable("paymentId") Long paymentId) {

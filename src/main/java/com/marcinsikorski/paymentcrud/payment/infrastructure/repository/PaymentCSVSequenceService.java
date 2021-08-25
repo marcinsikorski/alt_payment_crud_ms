@@ -1,8 +1,10 @@
 package com.marcinsikorski.paymentcrud.payment.infrastructure.repository;
 
+import com.marcinsikorski.paymentcrud.payment.infrastructure.config.CSVFileNameProviderService;
 import com.opencsv.bean.ColumnPositionMappingStrategy;
 import com.opencsv.bean.CsvToBean;
 import com.opencsv.bean.CsvToBeanBuilder;
+import lombok.AllArgsConstructor;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,10 +22,12 @@ import java.util.concurrent.atomic.AtomicLong;
 @Slf4j
 @Setter
 public class PaymentCSVSequenceService {
-    private final String SAMPLE_CSV_FILE = "./payments.csv";
+    private final String SAMPLE_CSV_FILE;
     private final AtomicLong atomicLong;
+    private CSVFileNameProviderService csvFileNameProviderService;
 
-    public PaymentCSVSequenceService(){
+    public PaymentCSVSequenceService(CSVFileNameProviderService csvFileNameProviderService){
+        this.SAMPLE_CSV_FILE = csvFileNameProviderService.getCsvTableFileName();
         this.atomicLong = new AtomicLong(getGreatestNumberInTable());
     }
     //load sequence on first load
