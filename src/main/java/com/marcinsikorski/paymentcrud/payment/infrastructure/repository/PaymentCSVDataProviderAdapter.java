@@ -6,8 +6,11 @@ import com.opencsv.bean.*;
 import com.opencsv.exceptions.CsvDataTypeMismatchException;
 import com.opencsv.exceptions.CsvRequiredFieldEmptyException;
 import lombok.AllArgsConstructor;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.FileUtils;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -16,8 +19,8 @@ import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,8 +29,9 @@ import java.util.stream.Collectors;
 public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
 
     private final PaymentCSVSequenceService paymentCSVSequenceService;
-    private static final String SAMPLE_CSV_FILE = "./payments.csv";
-    private static final String TEMP_CSV_FILE = SAMPLE_CSV_FILE + "_TMP";
+
+    private final String SAMPLE_CSV_FILE = "./payments.csv";
+    private final String TEMP_CSV_FILE = SAMPLE_CSV_FILE + "_TMP";
 
     private final Object lock = new Object();
 
@@ -55,8 +59,23 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
     }
 
     @Override
+    public List<PaymentDTO> findAll(){
+        return findByPredicate(p -> true);
+    }
+
+    @Override
     public List<PaymentDTO> findAllByUserId(Long userId){
-        return null;
+        return findByPredicate(p -> p.getUserId().equals(userId));
+    }
+
+    @Override
+    public List<PaymentDTO> findAllByCurrency(Currency currency){
+        return findByPredicate(p -> p.getCurrency().equals(currency));
+    }
+
+    @Override
+    public List<PaymentDTO> findAllByUserIdAndCurrency(Long userId, Currency currency){
+        return findByPredicate(p -> p.getUserId().equals(userId) && p.getCurrency().equals(currency));
     }
 
     @Override
@@ -168,6 +187,31 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
             return fileNew.renameTo(olderFile);
         }
         return false;
+    }
+
+    public List<PaymentDTO> findByPredicate(Predicate<PaymentCSVRecord> predicate){
+        Long maxLong = 0L;
+        List<PaymentCSVRecord> matchedList = new LinkedList<>();
+        synchronized (lock){
+            try(Reader reader = Files.newBufferedReader(Paths.get(SAMPLE_CSV_FILE));){
+                CsvToBean csvToBean = getCsvToBean(reader);
+                for (Object object : csvToBean) {
+                    PaymentCSVRecord paymentCSVRecord = (PaymentCSVRecord) object;
+                    if(predicate.test(paymentCSVRecord)){
+                        matchedList.add(paymentCSVRecord);
+                    }
+                }
+                return matchedList.stream()
+                        .map(this::recordToDTO)
+                        .collect(Collectors.toList());
+            } catch (NoSuchFileException e){
+                log.info("Csv db is empty. Returns empty list");
+                return Collections.EMPTY_LIST;
+            } catch (IOException e){
+                log.info("Cannot read csv file", e);
+                throw new RuntimeException("Cannot read given csv file.");
+            }
+        }
     }
 
     private MappingStrategy getMappingStrategy(){

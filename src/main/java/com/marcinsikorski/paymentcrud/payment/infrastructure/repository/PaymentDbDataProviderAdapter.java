@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Currency;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -24,8 +25,32 @@ public class PaymentDbDataProviderAdapter implements PaymentDataProvider {
     }
 
     @Override
+    public List<PaymentDTO> findAll(){
+        List<PaymentEntity> paymentEntities = paymentDbRepository.findAll();
+        return paymentEntities.stream()
+                .map(this::newEntityToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public List<PaymentDTO> findAllByUserId(Long userId){
         List<PaymentEntity> paymentEntities = paymentDbRepository.findAllByUserId(userId);
+        return paymentEntities.stream()
+                .map(this::newEntityToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PaymentDTO> findAllByCurrency(Currency currency){
+        List<PaymentEntity> paymentEntities = paymentDbRepository.findAllByCurrency(currency);
+        return paymentEntities.stream()
+                .map(this::newEntityToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<PaymentDTO> findAllByUserIdAndCurrency(Long userId, Currency currency){
+        List<PaymentEntity> paymentEntities = paymentDbRepository.findAllByUserIdAndCurrency(userId, currency);
         return paymentEntities.stream()
                 .map(this::newEntityToDTO)
                 .collect(Collectors.toList());

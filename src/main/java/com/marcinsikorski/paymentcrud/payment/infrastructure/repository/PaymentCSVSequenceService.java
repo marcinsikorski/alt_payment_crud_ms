@@ -3,7 +3,9 @@ package com.marcinsikorski.paymentcrud.payment.infrastructure.repository;
 import com.opencsv.bean.ColumnPositionMappingStrategy;
 import com.opencsv.bean.CsvToBean;
 import com.opencsv.bean.CsvToBeanBuilder;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -16,9 +18,9 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Service
 @Slf4j
+@Setter
 public class PaymentCSVSequenceService {
-
-    private static final String SAMPLE_CSV_FILE = "./payments.csv";
+    private final String SAMPLE_CSV_FILE = "./payments.csv";
     private final AtomicLong atomicLong;
 
     public PaymentCSVSequenceService(){
