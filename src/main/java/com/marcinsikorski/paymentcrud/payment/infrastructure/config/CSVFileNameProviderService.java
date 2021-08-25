@@ -12,4 +12,8 @@ public class CSVFileNameProviderService {
     public String getCsvTableFileName(){
         return SAMPLE_CSV_FILE;
     }
+
+    public String getTempCsvFileName(){
+        return SAMPLE_CSV_FILE + "_TMP";
+    }
 }

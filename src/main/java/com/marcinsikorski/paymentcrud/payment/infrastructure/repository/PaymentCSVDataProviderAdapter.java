@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
 
     private final PaymentCSVSequenceService paymentCSVSequenceService;
-    private final CSVFileNameProviderService csvFileNameProviderService;
+    private final CSVFileNameProviderService csvName;
 
     private final Object lock = new Object();
 
@@ -38,7 +38,7 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
     public Optional<PaymentDTO> findById(Long paymentId){
         Long maxLong = 0L;
         synchronized (lock){
-            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvFileNameProviderService.getCsvTableFileName()));){
+            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));){
                 CsvToBean csvToBean = getCsvToBean(reader);
                 for (Object object : csvToBean) {
                     PaymentCSVRecord paymentCSVRecord = (PaymentCSVRecord) object;
@@ -80,7 +80,7 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
     @Override
     public PaymentDTO save(PaymentDTO paymentDTO){
         synchronized (lock){
-            try(Writer writer = new FileWriter(this.csvFileNameProviderService.getCsvTableFileName(), true);){
+            try(Writer writer = new FileWriter(this.csvName.getCsvTableFileName(), true);){
                 StatefulBeanToCsv beanToCsv = getBeanToCsv(writer);
                 PaymentCSVRecord paymentCSVRecord = DTOtoCSVRecord(paymentDTO);
                 paymentCSVRecord.setPaymentId(this.paymentCSVSequenceService.getNextSequenceValue());
@@ -99,8 +99,8 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
         boolean foundFlag = false;
         PaymentCSVRecord paymentToUpdate = DTOtoCSVRecord(paymentDTO);
         synchronized (lock) {
-            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvFileNameProviderService.getCsvTableFileName()));
-                Writer writer = new FileWriter(this.csvFileNameProviderService.getCsvTableFileName()+"_TMP", true);
+            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));
+                Writer writer = new FileWriter(this.csvName.getTempCsvFileName(), true);
             ){
                 CsvToBean csvToBean = getCsvToBean(reader);
                 StatefulBeanToCsv beanToCsv = getBeanToCsv(writer);
@@ -113,7 +113,7 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
                         beanToCsv.write(paymentToUpdate);
                     }
                 }
-                replaceFiles(this.csvFileNameProviderService.getCsvTableFileName(), this.csvFileNameProviderService.getCsvTableFileName()+"_TMP");
+                replaceFiles(this.csvName.getCsvTableFileName(), this.csvName.getTempCsvFileName());
                 if(foundFlag){
                     return recordToDTO(paymentToUpdate);
                 } else {
@@ -139,8 +139,8 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
         boolean foundFlag = false;
         PaymentCSVRecord paymentToUpdate = DTOtoCSVRecord(paymentDTO);
         synchronized (lock) {
-            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvFileNameProviderService.getCsvTableFileName()));
-                Writer writer = new FileWriter(this.csvFileNameProviderService.getCsvTableFileName()+"_TMP", true);
+            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));
+                Writer writer = new FileWriter(this.csvName.getTempCsvFileName(), true);
             ){
                 CsvToBean csvToBean = getCsvToBean(reader);
                 StatefulBeanToCsv beanToCsv = getBeanToCsv(writer);
@@ -152,7 +152,7 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
                         foundFlag=true;
                     }
                 }
-                replaceFiles(this.csvFileNameProviderService.getCsvTableFileName(), this.csvFileNameProviderService.getCsvTableFileName()+"_TMP");
+                replaceFiles(this.csvName.getCsvTableFileName(), this.csvName.getTempCsvFileName());
                 if(!foundFlag){
                     throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cannot find " + paymentDTO.getPaymentId() + " payment id");
                 }
@@ -192,7 +192,7 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
         Long maxLong = 0L;
         List<PaymentCSVRecord> matchedList = new LinkedList<>();
         synchronized (lock){
-            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvFileNameProviderService.getCsvTableFileName()));){
+            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));){
                 CsvToBean csvToBean = getCsvToBean(reader);
                 for (Object object : csvToBean) {
                     PaymentCSVRecord paymentCSVRecord = (PaymentCSVRecord) object;
