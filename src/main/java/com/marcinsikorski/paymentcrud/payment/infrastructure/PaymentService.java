@@ -2,6 +2,7 @@ package com.marcinsikorski.paymentcrud.payment.infrastructure;
 
 import com.marcinsikorski.paymentcrud.payment.domain.PaymentDTO;
 import com.marcinsikorski.paymentcrud.payment.domain.PaymentDataProvider;
+import com.marcinsikorski.paymentcrud.payment.infrastructure.entrypoint.ModifiedPaymentInput;
 import com.marcinsikorski.paymentcrud.payment.infrastructure.entrypoint.NewPaymentInput;
 import com.marcinsikorski.paymentcrud.payment.infrastructure.repository.PaymentDbDataProviderAdapter;
 import lombok.AllArgsConstructor;
@@ -28,8 +29,16 @@ public class PaymentService {
 
     @Transactional
     public Long savePayment(NewPaymentInput newPaymentInput){
-        PaymentDTO paymentDTO = newPaymentInputToDTO(newPaymentInput);
-        return paymentDataProvider.save(paymentDTO).getPaymentId();
+        PaymentDTO inputPaymentDTO = newPaymentInputToDTO(newPaymentInput);
+        PaymentDTO savedPaymentDTO = paymentDataProvider.save(inputPaymentDTO);
+        return savedPaymentDTO.getPaymentId();
+    }
+
+    @Transactional
+    public PaymentDTO updatePayment(Long paymentId, ModifiedPaymentInput modifiedPaymentInput){
+        PaymentDTO paymentDTO = modifiedPaymentInputToDTO(modifiedPaymentInput, paymentId);
+        PaymentDTO updatedDTO = paymentDataProvider.update(paymentDTO);
+        return updatedDTO;
     }
 
     @Transactional
@@ -47,6 +56,16 @@ public class PaymentService {
                 .targetBankAccount(newPaymentInput.getTargetBankAccount())
                 .userId(newPaymentInput.getUserId())
                 .currency(newPaymentInput.getCurrency())
+                .build();
+    }
+
+    private PaymentDTO modifiedPaymentInputToDTO(ModifiedPaymentInput modifiedPaymentInput, Long paymentId){
+        return PaymentDTO.builder()
+                .amount(modifiedPaymentInput.getAmount())
+                .targetBankAccount(modifiedPaymentInput.getTargetBankAccount())
+                .userId(modifiedPaymentInput.getUserId())
+                .currency(modifiedPaymentInput.getCurrency())
+                .paymentId(paymentId)
                 .build();
     }
 }

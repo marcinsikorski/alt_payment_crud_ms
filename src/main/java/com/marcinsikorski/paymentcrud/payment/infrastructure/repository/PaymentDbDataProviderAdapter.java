@@ -52,6 +52,7 @@ public class PaymentDbDataProviderAdapter implements PaymentDataProvider {
         return newEntityToDTO(paymentDbRepository.save(paymentEntity));
     }
 
+    @Override
     public void delete(PaymentDTO paymentDTO){
         paymentDbRepository.delete(DTOtoEntity(paymentDTO));
     }
