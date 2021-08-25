@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Currency;
+import java.util.List;
 import java.util.Optional;
 
 public class PaymentService {
@@ -21,10 +23,25 @@ public class PaymentService {
         this.paymentDataProvider = paymentDataProvider;
     }
 
+    @Transactional
     public PaymentDTO findById(Long paymentId){
         return paymentDataProvider.findById(paymentId).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cannot find given payment id")
         );
+    }
+
+    @Transactional
+    public List<PaymentDTO> findByFilter(Long userId, Currency currency){
+        if(userId != null && currency != null){
+            return paymentDataProvider.findAllByUserIdAndCurrency(userId, currency);
+        } else if (userId != null) {
+            return paymentDataProvider.findAllByUserId(userId);
+        } else if (currency != null ){
+            return paymentDataProvider.findAllByCurrency(currency);
+        } else {
+            return paymentDataProvider.findAll();
+        }
+
     }
 
     @Transactional

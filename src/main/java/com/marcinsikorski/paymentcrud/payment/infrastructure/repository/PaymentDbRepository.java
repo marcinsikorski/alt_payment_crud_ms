@@ -10,7 +10,9 @@ import java.util.List;
 
 @Repository
 public interface PaymentDbRepository extends JpaRepository<PaymentEntity, Long> {
+    List<PaymentEntity> findAll();
     List<PaymentEntity> findAllByUserId(Long userId);
+    List<PaymentEntity> findAllByCurrency(Currency currency);
     List<PaymentEntity> findAllByUserIdAndCurrency(Long userId, Currency currency);
     List<PaymentEntity> findAllByUserIdAndTargetBankAccount(Long userId, String targetBankAccount);
 }

@@ -7,24 +7,30 @@ import com.marcinsikorski.paymentcrud.payment.infrastructure.entrypoint.NewPayme
 import com.marcinsikorski.paymentcrud.payment.infrastructure.repository.PaymentEntity;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Profile;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.annotation.Resource;
 import java.math.BigDecimal;
 import java.util.Currency;
+import java.util.List;
 
 import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@Profile({"test"})
+@EnableConfigurationProperties
 @SpringBootTest
 public class PaymentServiceTests {
 
     @Resource
     private PaymentService paymentService;
+
+    private static final Long EXAMPLE_USER_ID_1 = 4L;
+    private static final Long EXAMPLE_USER_ID_2 = 3L;
 
     @Test
     public void saveSinglePaymentThenFindItById() {
@@ -39,6 +45,35 @@ public class PaymentServiceTests {
         Assertions.assertEquals(newPaymentInput.getCurrency(), createdDTO.getCurrency(), "Saved currency code should be equal");
         Assertions.assertEquals(newPaymentInput.getAmount().stripTrailingZeros(), createdDTO.getAmount().stripTrailingZeros(), "Saved amount should be equal");
         Assertions.assertEquals(newPaymentInput.getTargetBankAccount(), createdDTO.getTargetBankAccount(), "Saved target bank account should be equal");
+    }
+
+    @Test
+    public void saveMultiplePaymentsThenFindItByUserOrCurrency() {
+        //prepare data
+        NewPaymentInput newPaymentInput = getExamplePaymentInput();
+        NewPaymentInput newPaymentInput2 = getExamplePaymentInput2();
+        NewPaymentInput newPaymentInput3 = getExamplePaymentInput3();
+        Long paymentId1 = paymentService.savePayment(newPaymentInput);
+        Long paymentId2 = paymentService.savePayment(newPaymentInput2);
+        Long paymentId3 = paymentService.savePayment(newPaymentInput3);
+
+        //execute
+        List<PaymentDTO> paymentsOfUser1 = paymentService.findByFilter(EXAMPLE_USER_ID_1,null);
+        List<PaymentDTO> paymentsOfUser1inUSD = paymentService.findByFilter(EXAMPLE_USER_ID_1,Currency.getInstance("USD"));
+        List<PaymentDTO> paymentsinUSD = paymentService.findByFilter(EXAMPLE_USER_ID_1,Currency.getInstance("USD"));
+
+        //check
+        Assertions.assertEquals(paymentsOfUser1.size(),
+                paymentsOfUser1.stream().filter(p->p.getUserId().equals(EXAMPLE_USER_ID_1)).count(),
+                "All payments are from the same user ");
+        Assertions.assertEquals(paymentsOfUser1inUSD.size(),
+                paymentsOfUser1inUSD.stream().filter(p->p.getUserId().equals(EXAMPLE_USER_ID_1)
+                        && p.getCurrency().equals(Currency.getInstance("USD"))).count(),
+                "All payments are from correct user and in USD ");
+        Assertions.assertEquals(paymentsinUSD.size(),
+                paymentsinUSD.stream().filter(p->p.getCurrency().equals(Currency.getInstance("USD"))).count(),
+                "All payments are in USD");
+
     }
 
     @Test
@@ -95,9 +130,26 @@ public class PaymentServiceTests {
     private NewPaymentInput getExamplePaymentInput() {
         return NewPaymentInput.builder()
                 .amount(BigDecimal.valueOf(new Double(250.00)))
-                .userId(4L)
+                .userId(EXAMPLE_USER_ID_1)
                 .currency(Currency.getInstance("PLN"))
-                .targetBankAccount("PL86109024026573543627562617")
+                .targetBankAccount("PL8654626356367")
+                .build();
+    }
+
+    private NewPaymentInput getExamplePaymentInput2() {
+        return NewPaymentInput.builder()
+                .amount(BigDecimal.valueOf(new Double(140.00)))
+                .userId(EXAMPLE_USER_ID_1)
+                .currency(Currency.getInstance("USD"))
+                .targetBankAccount("PL861092562543627562617")
+                .build();
+    }
+    private NewPaymentInput getExamplePaymentInput3() {
+        return NewPaymentInput.builder()
+                .amount(BigDecimal.valueOf(new Double(490.00)))
+                .userId(EXAMPLE_USER_ID_2)
+                .currency(Currency.getInstance("PLN"))
+                .targetBankAccount("PL861090453543627562617")
                 .build();
     }
 }
