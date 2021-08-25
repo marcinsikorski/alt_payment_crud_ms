@@ -1,4 +1,4 @@
-package com.marcinsikorski.paymentcrud.payment.entity;
+package com.marcinsikorski.paymentcrud.payment.infrastructure.repository;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
