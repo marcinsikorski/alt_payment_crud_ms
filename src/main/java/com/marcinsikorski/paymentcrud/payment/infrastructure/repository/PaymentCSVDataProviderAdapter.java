@@ -64,17 +64,18 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
 
     @Override
     public List<PaymentDTO> findAllByUserId(Long userId){
-        return findByPredicate(p -> p.getUserId().equals(userId));
+        return findByPredicate(p -> p.getUserId() !=null && p.getUserId().equals(userId));
     }
 
     @Override
     public List<PaymentDTO> findAllByCurrency(Currency currency){
-        return findByPredicate(p -> p.getCurrency().equals(currency));
+        return findByPredicate(p -> p.getCurrency() !=null && p.getCurrency().equals(currency));
     }
 
     @Override
     public List<PaymentDTO> findAllByUserIdAndCurrency(Long userId, Currency currency){
-        return findByPredicate(p -> p.getUserId().equals(userId) && p.getCurrency().equals(currency));
+        return findByPredicate(p -> (p.getUserId() !=null && p.getUserId().equals(userId)) &&
+                        (p.getCurrency() !=null && p.getCurrency().equals(currency)));
     }
 
     @Override
