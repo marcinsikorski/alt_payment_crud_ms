@@ -28,8 +28,9 @@ public class PaymentService {
 
     @Transactional
     public Long savePayment(NewPaymentInput newPaymentInput){
-        PaymentDTO paymentDTO = newPaymentInputToDTO(newPaymentInput);
-        return paymentDataProvider.save(paymentDTO).getPaymentId();
+        PaymentDTO inputPaymentDTO = newPaymentInputToDTO(newPaymentInput);
+        PaymentDTO savedPaymentDTO = paymentDataProvider.save(inputPaymentDTO);
+        return savedPaymentDTO.getPaymentId();
     }
 
     @Transactional

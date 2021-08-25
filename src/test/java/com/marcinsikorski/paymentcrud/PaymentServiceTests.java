@@ -38,6 +38,17 @@ public class PaymentServiceTests {
         Assertions.assertEquals(newPaymentInput.getTargetBankAccount(), createdDTO.getTargetBankAccount(), "Saved target bank account should be equal");
     }
 
+    @Test
+    public void findPaymentById() {
+        PaymentDTO foundDTO = paymentService.findById(8L);
+
+        Assertions.assertNotNull(foundDTO.getPaymentId(), "Saved payment id should be assigned");
+        Assertions.assertNotNull(foundDTO.getUserId(), "Saved user id should not be null");
+        Assertions.assertNotNull(foundDTO.getCurrency(), "Saved currency code should not be null");
+        Assertions.assertNotNull(foundDTO.getAmount(),  "Saved amount should not be null");
+        Assertions.assertNotNull(foundDTO.getTargetBankAccount(), "Saved target bank account should not be null");
+    }
+
     private NewPaymentInput getExamplePaymentInput() {
         return NewPaymentInput.builder()
                 .amount(BigDecimal.valueOf(new Double(250.00)))
