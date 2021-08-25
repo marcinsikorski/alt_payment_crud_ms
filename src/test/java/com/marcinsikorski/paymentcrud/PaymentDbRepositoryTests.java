@@ -1,14 +1,11 @@
 package com.marcinsikorski.paymentcrud;
 
-import com.marcinsikorski.paymentcrud.payment.control.repository.PaymentRepository;
-import com.marcinsikorski.paymentcrud.payment.entity.PaymentEntity;
+import com.marcinsikorski.paymentcrud.payment.infrastructure.repository.PaymentDbRepository;
+import com.marcinsikorski.paymentcrud.payment.infrastructure.repository.PaymentEntity;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Profile;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
@@ -24,9 +21,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @Profile({"test"})
 @SpringBootTest
-public class PaymentRepositoryTests {
+public class PaymentDbRepositoryTests {
     @Resource
-    private PaymentRepository paymentRepository;
+    private PaymentDbRepository paymentDbRepository;
+
 
     @Transactional
     @Test
@@ -34,9 +32,9 @@ public class PaymentRepositoryTests {
         //create
         PaymentEntity paymentEntity = getExamplePaymentEntity();
         //save
-        paymentRepository.save(paymentEntity);
+        paymentDbRepository.save(paymentEntity);
         //get and check
-        PaymentEntity paymentEntity1 = paymentRepository.getById(paymentEntity.getPaymentId());
+        PaymentEntity paymentEntity1 = paymentDbRepository.getById(paymentEntity.getPaymentId());
         Assertions.assertEquals(paymentEntity.getPaymentId(), paymentEntity1.getPaymentId(), "Saved payment id should be equal");
         Assertions.assertEquals(paymentEntity.getUserId(), paymentEntity1.getUserId(), "Saved user id should be equal");
         Assertions.assertEquals(paymentEntity.getCurrency(), paymentEntity1.getCurrency(), "Saved currency code should be equal");
@@ -46,39 +44,28 @@ public class PaymentRepositoryTests {
 
     @Transactional
     @Test
-    public void findPagedPaymentsForUser() {
-        //page configuration
-        Integer perPage = 10;
-        Integer pageNumber = 0;
+    public void findPaymentsForUser() {
+        //input configuration
         Long userId = 2L;
 
         //load test data
         List<PaymentEntity> list = generateExamplePayments();
         Long countOfPaymentsOfUser2 = list.stream().filter(p->p.getUserId().equals(2L)).count();
-        paymentRepository.saveAll(list);
+        paymentDbRepository.saveAll(list);
 
         //test get functions of repository
-        Pageable pageable = PageRequest.of(pageNumber, perPage);
-        Page<PaymentEntity> page = paymentRepository.findByUserId(userId, pageable);
+        List<PaymentEntity> returnedList = paymentDbRepository.findAllByUserId(userId);
         Assertions.assertEquals(
-                page.getTotalElements(),
+                returnedList.size(),
                 countOfPaymentsOfUser2,
                 "Should return 32 payments of user 2"
         );
-        Assertions.assertEquals(
-                page.getTotalPages(),
-                (int) Math.ceil((double) countOfPaymentsOfUser2 / (double) perPage),
-                "Should return 4 pages of payments of user 2"
-        );
-
     }
 
     @Transactional
     @Test
-    public void findPagedPaymentForUserAndCurrency() {
-        //page configuration
-        Integer perPage = 10;
-        Integer pageNumber = 0;
+    public void findPaymentForUserAndCurrency() {
+        //input configuration
         Long userId = 2L;
 
         //load test data
@@ -91,22 +78,17 @@ public class PaymentRepositoryTests {
                 p -> p.getCurrency().equals(Currency.getInstance("USD")) &&
                         p.getUserId().equals(userId)
         ).count();
-        paymentRepository.saveAll(list);
+        paymentDbRepository.saveAll(list);
 
         //test get functions of repository
-        Pageable pageable = PageRequest.of(pageNumber, perPage);
-        Page<PaymentEntity> pageInPLN = paymentRepository.findByUserIdAndCurrency(userId, Currency.getInstance("PLN"),pageable);
-        Page<PaymentEntity> pageInUSD = paymentRepository.findByUserIdAndCurrency(userId, Currency.getInstance("USD"),pageable);
-        Assertions.assertEquals(pageInPLN.getTotalElements(),
+        List<PaymentEntity> listInPLN = paymentDbRepository.findAllByUserIdAndCurrency(userId, Currency.getInstance("PLN"));
+        List<PaymentEntity> listInUSD = paymentDbRepository.findAllByUserIdAndCurrency(userId, Currency.getInstance("USD"));
+        Assertions.assertEquals(listInPLN.size(),
                 countOfPaymentsOfUser2InPLN,
                 "Should return 32 PLN payments of user 2"
         );
-        Assertions.assertEquals(pageInPLN.getTotalPages(),
-                (int) Math.ceil((double) countOfPaymentsOfUser2InPLN / (double) perPage),
-                "Should return 4 pages of PLN payments of user 2"
-        );
         Assertions.assertEquals(
-                pageInUSD.getTotalElements(),
+                listInUSD.size(),
                 countOfPaymentsOfUser2InUSD,
                 "Should return 0 USD payments of user 2"
                 );
@@ -116,14 +98,14 @@ public class PaymentRepositoryTests {
     public void savePaymentThenDelete() {
         //create payment to delete
         PaymentEntity paymentEntity = getExamplePaymentEntity();
-        paymentRepository.save(paymentEntity);
+        paymentDbRepository.save(paymentEntity);
 
         //delete
-        PaymentEntity paymentEntity2 = paymentRepository.getById(paymentEntity.getPaymentId());
-        paymentRepository.delete(paymentEntity2);
+        PaymentEntity paymentEntity2 = paymentDbRepository.getById(paymentEntity.getPaymentId());
+        paymentDbRepository.delete(paymentEntity2);
 
         //check if it is deleted
-        Optional<PaymentEntity> optionalPaymentEntity = paymentRepository.findById(paymentEntity.getPaymentId());
+        Optional<PaymentEntity> optionalPaymentEntity = paymentDbRepository.findById(paymentEntity.getPaymentId());
         Assertions.assertTrue(!optionalPaymentEntity.isPresent(), "Payment should not be received" );
     }
 
@@ -135,7 +117,7 @@ public class PaymentRepositoryTests {
                 .currency(Currency.getInstance("PLN"))
                 .targetBankAccount("PL86109024026573543627562617")
                 .build();
-        assertThrows(RuntimeException.class, () -> paymentRepository.saveAndFlush(missingUserId));
+        assertThrows(RuntimeException.class, () -> paymentDbRepository.saveAndFlush(missingUserId));
     }
 
     @Transactional
@@ -146,7 +128,7 @@ public class PaymentRepositoryTests {
                 .userId(4L)
                 .targetBankAccount("PL86109024026573543627562617")
                 .build();
-        assertThrows(RuntimeException.class, () -> paymentRepository.saveAndFlush(missingCurrency));
+        assertThrows(RuntimeException.class, () -> paymentDbRepository.saveAndFlush(missingCurrency));
     }
 
     @Transactional
@@ -157,7 +139,7 @@ public class PaymentRepositoryTests {
                 .currency(Currency.getInstance("PLN"))
                 .targetBankAccount("PL86109024026573543627562617")
                 .build();
-        assertThrows(RuntimeException.class, () -> paymentRepository.saveAndFlush(missingAmount));
+        assertThrows(RuntimeException.class, () -> paymentDbRepository.saveAndFlush(missingAmount));
     }
 
     @Transactional
@@ -168,7 +150,7 @@ public class PaymentRepositoryTests {
                 .currency(Currency.getInstance("PLN"))
                 .userId(5L)
                 .build();
-        assertThrows(RuntimeException.class, () -> paymentRepository.saveAndFlush(missingTargetBankAccount));
+        assertThrows(RuntimeException.class, () -> paymentDbRepository.saveAndFlush(missingTargetBankAccount));
     }
 
     @Transactional
@@ -180,7 +162,7 @@ public class PaymentRepositoryTests {
                 .userId(5L)
                 .targetBankAccount("PL86109024026573543342343264836248362486248264962324324627562617")
                 .build();
-        assertThrows(RuntimeException.class, () -> paymentRepository.saveAndFlush(tooLongTargetBankNumber));
+        assertThrows(RuntimeException.class, () -> paymentDbRepository.saveAndFlush(tooLongTargetBankNumber));
     }
 
     private List<PaymentEntity> generateExamplePayments(){
