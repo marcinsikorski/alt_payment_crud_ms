@@ -27,7 +27,7 @@ public class PaymentServiceTests {
     private PaymentService paymentService;
 
     @Test
-    public void saveSinglePayment() {
+    public void saveSinglePaymentThenFindItById() {
         NewPaymentInput newPaymentInput = getExamplePaymentInput();
         Long paymentId = paymentService.savePayment(newPaymentInput);
 
@@ -39,17 +39,6 @@ public class PaymentServiceTests {
         Assertions.assertEquals(newPaymentInput.getCurrency(), createdDTO.getCurrency(), "Saved currency code should be equal");
         Assertions.assertEquals(newPaymentInput.getAmount().stripTrailingZeros(), createdDTO.getAmount().stripTrailingZeros(), "Saved amount should be equal");
         Assertions.assertEquals(newPaymentInput.getTargetBankAccount(), createdDTO.getTargetBankAccount(), "Saved target bank account should be equal");
-    }
-
-    @Test
-    public void findPaymentById() {
-        PaymentDTO foundDTO = paymentService.findById(8L);
-
-        Assertions.assertNotNull(foundDTO.getPaymentId(), "Saved payment id should be assigned");
-        Assertions.assertNotNull(foundDTO.getUserId(), "Saved user id should not be null");
-        Assertions.assertNotNull(foundDTO.getCurrency(), "Saved currency code should not be null");
-        Assertions.assertNotNull(foundDTO.getAmount(),  "Saved amount should not be null");
-        Assertions.assertNotNull(foundDTO.getTargetBankAccount(), "Saved target bank account should not be null");
     }
 
     @Test
