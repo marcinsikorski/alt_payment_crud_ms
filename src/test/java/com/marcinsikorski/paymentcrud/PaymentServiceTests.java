@@ -7,8 +7,10 @@ import com.marcinsikorski.paymentcrud.payment.infrastructure.entrypoint.NewPayme
 import com.marcinsikorski.paymentcrud.payment.infrastructure.repository.PaymentEntity;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Profile;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -20,7 +22,7 @@ import java.util.List;
 import static org.junit.Assert.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-@Profile({"test"})
+@EnableConfigurationProperties
 @SpringBootTest
 public class PaymentServiceTests {
 
