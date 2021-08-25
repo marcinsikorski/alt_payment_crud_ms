@@ -2,6 +2,7 @@ package com.marcinsikorski.paymentcrud.payment.infrastructure;
 
 import com.marcinsikorski.paymentcrud.payment.domain.PaymentDTO;
 import com.marcinsikorski.paymentcrud.payment.domain.PaymentDataProvider;
+import com.marcinsikorski.paymentcrud.payment.infrastructure.entrypoint.ModifiedPaymentInput;
 import com.marcinsikorski.paymentcrud.payment.infrastructure.entrypoint.NewPaymentInput;
 import com.marcinsikorski.paymentcrud.payment.infrastructure.repository.PaymentDbDataProviderAdapter;
 import lombok.AllArgsConstructor;
@@ -34,6 +35,13 @@ public class PaymentService {
     }
 
     @Transactional
+    public PaymentDTO updatePayment(Long paymentId, ModifiedPaymentInput modifiedPaymentInput){
+        PaymentDTO paymentDTO = modifiedPaymentInputToDTO(modifiedPaymentInput, paymentId);
+        PaymentDTO updatedDTO = paymentDataProvider.update(paymentDTO);
+        return updatedDTO;
+    }
+
+    @Transactional
     public void deletePayment(Long paymentId){
         Optional<PaymentDTO> optionalPaymentDTO = paymentDataProvider.findById(paymentId);
         if(!optionalPaymentDTO.isPresent()){
@@ -48,6 +56,16 @@ public class PaymentService {
                 .targetBankAccount(newPaymentInput.getTargetBankAccount())
                 .userId(newPaymentInput.getUserId())
                 .currency(newPaymentInput.getCurrency())
+                .build();
+    }
+
+    private PaymentDTO modifiedPaymentInputToDTO(ModifiedPaymentInput modifiedPaymentInput, Long paymentId){
+        return PaymentDTO.builder()
+                .amount(modifiedPaymentInput.getAmount())
+                .targetBankAccount(modifiedPaymentInput.getTargetBankAccount())
+                .userId(modifiedPaymentInput.getUserId())
+                .currency(modifiedPaymentInput.getCurrency())
+                .paymentId(paymentId)
                 .build();
     }
 }

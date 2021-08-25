@@ -61,6 +61,29 @@ public class PaymentServiceTests {
     }
 
     @Test
+    public void shouldThrowExceptionWhenCannotFindPaymentToDelete() {
+        Assertions.assertThrows(ResponseStatusException.class,
+                () -> paymentService.deletePayment(9432423432424L),
+                "That number does not exist in db, so cannot be deleted");
+    }
+
+    @Test
+    public void shouldThrowExceptionWhenCannotFindPaymentToUpdate() {
+        NewPaymentInput newPaymentInput = getExamplePaymentInput();
+        Long paymentId = paymentService.savePayment(newPaymentInput);
+        PaymentDTO beforeUpdate = paymentService.findById(paymentId);
+        ModifiedPaymentInput modifiedPaymentInput = ModifiedPaymentInput.builder()
+                .amount(BigDecimal.valueOf(new Double(4350.00)))
+                .currency(Currency.getInstance("USD"))
+                .userId(beforeUpdate.getUserId())
+                .targetBankAccount(beforeUpdate.getTargetBankAccount())
+                .build();
+        Assertions.assertThrows(ResponseStatusException.class,
+                () -> paymentService.updatePayment(9432423432424L, modifiedPaymentInput),
+                "That number does not exist in db, so cannot be updated");
+    }
+
+    @Test
     public void testUpdatePayment() {
         NewPaymentInput newPaymentInput = getExamplePaymentInput();
         Long paymentId = paymentService.savePayment(newPaymentInput);
