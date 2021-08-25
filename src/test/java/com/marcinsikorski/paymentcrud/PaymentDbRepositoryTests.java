@@ -25,6 +25,7 @@ public class PaymentDbRepositoryTests {
     @Resource
     private PaymentDbRepository paymentDbRepository;
 
+
     @Transactional
     @Test
     public void saveSinglePayment() {
