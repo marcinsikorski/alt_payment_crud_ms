@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
-public class PaymentDataProviderAdapter implements PaymentDataProvider {
+public class PaymentDbDataProviderAdapter implements PaymentDataProvider {
 
     private PaymentDbRepository paymentDbRepository;
 

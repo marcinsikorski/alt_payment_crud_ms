@@ -1,8 +1,9 @@
 package com.marcinsikorski.paymentcrud.payment.infrastructure;
 
 import com.marcinsikorski.paymentcrud.payment.domain.PaymentDTO;
+import com.marcinsikorski.paymentcrud.payment.domain.PaymentDataProvider;
 import com.marcinsikorski.paymentcrud.payment.infrastructure.entrypoint.NewPaymentInput;
-import com.marcinsikorski.paymentcrud.payment.infrastructure.repository.PaymentDataProviderAdapter;
+import com.marcinsikorski.paymentcrud.payment.infrastructure.repository.PaymentDbDataProviderAdapter;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -11,14 +12,16 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
-@AllArgsConstructor
-@Service
 public class PaymentService {
 
-    private final PaymentDataProviderAdapter paymentDataProviderAdapter;
+    private final PaymentDataProvider paymentDataProvider;
+
+    public PaymentService(PaymentDataProvider paymentDataProvider){
+        this.paymentDataProvider = paymentDataProvider;
+    }
 
     public PaymentDTO findById(Long paymentId){
-        return paymentDataProviderAdapter.findById(paymentId).orElseThrow(
+        return paymentDataProvider.findById(paymentId).orElseThrow(
                 () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Cannot find given payment id")
         );
     }
@@ -26,16 +29,16 @@ public class PaymentService {
     @Transactional
     public Long savePayment(NewPaymentInput newPaymentInput){
         PaymentDTO paymentDTO = newPaymentInputToDTO(newPaymentInput);
-        return paymentDataProviderAdapter.save(paymentDTO).getPaymentId();
+        return paymentDataProvider.save(paymentDTO).getPaymentId();
     }
 
     @Transactional
     public void deletePayment(Long paymentId){
-        Optional<PaymentDTO> optionalPaymentDTO = paymentDataProviderAdapter.findById(paymentId);
+        Optional<PaymentDTO> optionalPaymentDTO = paymentDataProvider.findById(paymentId);
         if(!optionalPaymentDTO.isPresent()){
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cannot find given payment id");
         }
-        paymentDataProviderAdapter.delete(optionalPaymentDTO.get());
+        paymentDataProvider.delete(optionalPaymentDTO.get());
     }
 
     private PaymentDTO newPaymentInputToDTO(NewPaymentInput newPaymentInput){
