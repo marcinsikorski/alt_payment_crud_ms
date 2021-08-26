@@ -36,7 +36,7 @@ public class PaymentController {
     @PostMapping("")
     public ResponseEntity<Long> registerPayment(@Valid @RequestBody NewPaymentInput newPaymentInput) {
         Long paymentId = this.paymentService.savePayment(newPaymentInput);
-        return ResponseEntity.status(HttpStatus.OK).body(paymentId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(paymentId);
     }
 
     @PutMapping("/{paymentId}")
