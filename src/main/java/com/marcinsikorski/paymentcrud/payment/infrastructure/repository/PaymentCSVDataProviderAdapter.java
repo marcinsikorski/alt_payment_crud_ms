@@ -21,6 +21,8 @@ import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Paths;
 import java.util.*;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -32,28 +34,29 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
     private final PaymentCSVSequenceService paymentCSVSequenceService;
     private final CSVFileNameProviderService csvName;
 
-    private final Object lock = new Object();
+    private final ReadWriteLock readWriteLock = new ReentrantReadWriteLock();
 
     @Override
     public Optional<PaymentDTO> findById(Long paymentId){
         Long maxLong = 0L;
-        synchronized (lock){
-            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));){
-                CsvToBean csvToBean = getCsvToBean(reader);
-                for (Object object : csvToBean) {
-                    PaymentCSVRecord paymentCSVRecord = (PaymentCSVRecord) object;
-                    if(paymentCSVRecord.getPaymentId().equals(paymentId)){
-                        return Optional.of(recordToDTO(paymentCSVRecord));
-                    }
+        readWriteLock.readLock().lock();
+        try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));){
+            CsvToBean csvToBean = getCsvToBean(reader);
+            for (Object object : csvToBean) {
+                PaymentCSVRecord paymentCSVRecord = (PaymentCSVRecord) object;
+                if(paymentCSVRecord.getPaymentId().equals(paymentId)){
+                    return Optional.of(recordToDTO(paymentCSVRecord));
                 }
-                return Optional.empty();
-            } catch (NoSuchFileException e){
-                log.info("Csv db is empty. Returns empty Optional");
-                return Optional.empty();
-            } catch (IOException e){
-                log.info("Cannot read csv file", e);
-                throw new RuntimeException("Cannot read given csv file.");
             }
+            return Optional.empty();
+        } catch (NoSuchFileException e){
+            log.info("Csv db is empty. Returns empty Optional");
+            return Optional.empty();
+        } catch (IOException e){
+            log.info("Cannot read csv file", e);
+            throw new RuntimeException("Cannot read given csv file.");
+        } finally {
+            readWriteLock.readLock().unlock();
         }
     }
 
@@ -80,18 +83,19 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
 
     @Override
     public PaymentDTO save(PaymentDTO paymentDTO){
-        synchronized (lock){
-            try(Writer writer = new FileWriter(this.csvName.getCsvTableFileName(), true);){
+        readWriteLock.writeLock().lock();
+        try(Writer writer = new FileWriter(this.csvName.getCsvTableFileName(), true);){
                 StatefulBeanToCsv beanToCsv = getBeanToCsv(writer);
                 PaymentCSVRecord paymentCSVRecord = DTOtoCSVRecord(paymentDTO);
                 paymentCSVRecord.setPaymentId(this.paymentCSVSequenceService.getNextSequenceValue());
                 beanToCsv.write(paymentCSVRecord);
                 PaymentDTO savedPayments = recordToDTO(paymentCSVRecord);
                 return savedPayments;
-            } catch (Exception e){
-                log.error("Failed csv save", e);
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed csv save");
-            }
+        } catch (Exception e){
+            log.error("Failed csv save", e);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed csv save");
+        } finally {
+            readWriteLock.writeLock().unlock();
         }
     }
 
@@ -99,75 +103,76 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
     public PaymentDTO update(PaymentDTO paymentDTO){
         boolean foundFlag = false;
         PaymentCSVRecord paymentToUpdate = DTOtoCSVRecord(paymentDTO);
-        synchronized (lock) {
-            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));
+        readWriteLock.writeLock().lock();
+        try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));
                 Writer writer = new FileWriter(this.csvName.getTempCsvFileName(), true);
             ){
-                CsvToBean csvToBean = getCsvToBean(reader);
-                StatefulBeanToCsv beanToCsv = getBeanToCsv(writer);
-                for (Object object : csvToBean) {
-                    PaymentCSVRecord paymentCSVRecord = (PaymentCSVRecord) object;
-                    if(!paymentCSVRecord.getPaymentId().equals(paymentDTO.getPaymentId())){
-                        beanToCsv.write(paymentCSVRecord);
-                    } else {
-                        foundFlag=true;
-                        beanToCsv.write(paymentToUpdate);
-                    }
-                }
-                replaceFiles(this.csvName.getCsvTableFileName(), this.csvName.getTempCsvFileName());
-                if(foundFlag){
-                    return recordToDTO(paymentToUpdate);
+            CsvToBean csvToBean = getCsvToBean(reader);
+            StatefulBeanToCsv beanToCsv = getBeanToCsv(writer);
+            for (Object object : csvToBean) {
+                PaymentCSVRecord paymentCSVRecord = (PaymentCSVRecord) object;
+                if(!paymentCSVRecord.getPaymentId().equals(paymentDTO.getPaymentId())){
+                    beanToCsv.write(paymentCSVRecord);
                 } else {
-                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment wasn't found.");
+                    foundFlag=true;
+                    beanToCsv.write(paymentToUpdate);
                 }
-            } catch (NoSuchFileException e){
-                log.info("Csv db is empty. Returns empty Optional");
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "CSV Db is empty, cannot find payment");
-            } catch (IOException e){
-                log.info("Error on updating csv file", e);
-                throw new RuntimeException("Cannot read given csv file.");
-            } catch (CsvDataTypeMismatchException e){
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "CSV DB is populated wrong");
-            } catch (CsvRequiredFieldEmptyException e){
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "CSV DB data constraints are not met");
             }
+            replaceFiles(this.csvName.getCsvTableFileName(), this.csvName.getTempCsvFileName());
+            if(foundFlag){
+                return recordToDTO(paymentToUpdate);
+            } else {
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment wasn't found.");
+            }
+        } catch (NoSuchFileException e){
+            log.info("Csv db is empty. Returns empty Optional");
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "CSV Db is empty, cannot find payment");
+        } catch (IOException e){
+            log.info("Error on updating csv file", e);
+            throw new RuntimeException("Cannot read given csv file.");
+        } catch (CsvDataTypeMismatchException e){
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "CSV DB is populated wrong");
+        } catch (CsvRequiredFieldEmptyException e){
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "CSV DB data constraints are not met");
+        } finally {
+            readWriteLock.writeLock().unlock();
         }
-
     }
 
     @Override
     public void delete(PaymentDTO paymentDTO){
         boolean foundFlag = false;
         PaymentCSVRecord paymentToUpdate = DTOtoCSVRecord(paymentDTO);
-        synchronized (lock) {
-            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));
-                Writer writer = new FileWriter(this.csvName.getTempCsvFileName(), true);
+        readWriteLock.writeLock().lock();
+        try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));
+            Writer writer = new FileWriter(this.csvName.getTempCsvFileName(), true);
             ){
-                CsvToBean csvToBean = getCsvToBean(reader);
-                StatefulBeanToCsv beanToCsv = getBeanToCsv(writer);
-                for (Object object : csvToBean) {
-                    PaymentCSVRecord paymentCSVRecord = (PaymentCSVRecord) object;
-                    if(!paymentCSVRecord.getPaymentId().equals(paymentDTO.getPaymentId())){
-                        beanToCsv.write(paymentCSVRecord);
-                    } else {
-                        foundFlag=true;
-                    }
+            CsvToBean csvToBean = getCsvToBean(reader);
+            StatefulBeanToCsv beanToCsv = getBeanToCsv(writer);
+            for (Object object : csvToBean) {
+                PaymentCSVRecord paymentCSVRecord = (PaymentCSVRecord) object;
+                if(!paymentCSVRecord.getPaymentId().equals(paymentDTO.getPaymentId())){
+                    beanToCsv.write(paymentCSVRecord);
+                } else {
+                    foundFlag=true;
                 }
-                replaceFiles(this.csvName.getCsvTableFileName(), this.csvName.getTempCsvFileName());
-                if(!foundFlag){
-                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cannot find " + paymentDTO.getPaymentId() + " payment id");
-                }
-            } catch (NoSuchFileException e){
+            }
+            replaceFiles(this.csvName.getCsvTableFileName(), this.csvName.getTempCsvFileName());
+            if(!foundFlag){
+                throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Cannot find " + paymentDTO.getPaymentId() + " payment id");
+            }
+        } catch (NoSuchFileException e){
                 log.info("Csv db is empty. Returns empty Optional");
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "CSV Db is empty, cannot find payment");
-            } catch (IOException e){
+        } catch (IOException e){
                 log.info("Error on updating csv file", e);
                 throw new RuntimeException("Cannot read given csv file.");
-            } catch (CsvDataTypeMismatchException e){
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "CSV DB is populated wrong");
-            } catch (CsvRequiredFieldEmptyException e){
-                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "CSV DB data constraints are not met");
-            }
+        } catch (CsvDataTypeMismatchException e){
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "CSV DB is populated wrong");
+        } catch (CsvRequiredFieldEmptyException e){
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "CSV DB data constraints are not met");
+        } finally {
+            readWriteLock.writeLock().unlock();
         }
     }
 
@@ -189,28 +194,29 @@ public class PaymentCSVDataProviderAdapter implements PaymentDataProvider {
         return false;
     }
 
-    public List<PaymentDTO> findByPredicate(Predicate<PaymentCSVRecord> predicate){
+    private List<PaymentDTO> findByPredicate(Predicate<PaymentCSVRecord> predicate){
         Long maxLong = 0L;
         List<PaymentCSVRecord> matchedList = new LinkedList<>();
-        synchronized (lock){
-            try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));){
-                CsvToBean csvToBean = getCsvToBean(reader);
-                for (Object object : csvToBean) {
-                    PaymentCSVRecord paymentCSVRecord = (PaymentCSVRecord) object;
-                    if(predicate.test(paymentCSVRecord)){
-                        matchedList.add(paymentCSVRecord);
-                    }
+        readWriteLock.readLock().lock();
+        try(Reader reader = Files.newBufferedReader(Paths.get(this.csvName.getCsvTableFileName()));){
+            CsvToBean csvToBean = getCsvToBean(reader);
+            for (Object object : csvToBean) {
+                PaymentCSVRecord paymentCSVRecord = (PaymentCSVRecord) object;
+                if(predicate.test(paymentCSVRecord)){
+                    matchedList.add(paymentCSVRecord);
                 }
-                return matchedList.stream()
-                        .map(this::recordToDTO)
-                        .collect(Collectors.toList());
-            } catch (NoSuchFileException e){
-                log.info("Csv db is empty. Returns empty list");
-                return Collections.EMPTY_LIST;
-            } catch (IOException e){
-                log.info("Cannot read csv file", e);
-                throw new RuntimeException("Cannot read given csv file.");
             }
+            return matchedList.stream()
+                    .map(this::recordToDTO)
+                    .collect(Collectors.toList());
+        } catch (NoSuchFileException e){
+            log.info("Csv db is empty. Returns empty list");
+            return Collections.EMPTY_LIST;
+        } catch (IOException e){
+            log.info("Cannot read csv file", e);
+            throw new RuntimeException("Cannot read given csv file.");
+        } finally {
+            readWriteLock.readLock().unlock();
         }
     }
 
